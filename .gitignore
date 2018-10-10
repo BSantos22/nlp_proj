@@ -47,6 +47,8 @@ coverage.xml
 .hypothesis/
 venv/
 
+main/results/
+
 # Translations
 *.mo
 *.pot
