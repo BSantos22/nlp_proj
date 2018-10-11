@@ -50,7 +50,7 @@ def tweet_is_english(tweet):
 	return None
 
 
-def main(topic, tweets_per_month, start, fame):
+def acquireTweets(topic, tweets_per_month, start, fame):
 	file_name = topic + "_" + str(tweets_per_month) + "_" + str(fame)
 
 	def tweet_is_fame_dayum(tweet):
@@ -60,7 +60,7 @@ def main(topic, tweets_per_month, start, fame):
 	num_tweets = 0
 	num_filtered = 0
 	tweets_file_name = raw_dir + '/' + file_name + '.txt'
-	tweets_file_name_en = filtered_dir + '/' + file_name + '.txt'
+	tweets_file_name_filtered = filtered_dir + '/' + topic + '.txt'
 	while start < end:
 		until = start + relativedelta(days=1)
 		print(start.strftime(time_format) + " to " + until.strftime(time_format))
@@ -78,12 +78,37 @@ def main(topic, tweets_per_month, start, fame):
 					num_filtered += 1
 					tweet["tokens"] = str(words_set)
 					d = json.dumps(tweet, sort_keys=True, indent=4)
-					print(d, file=open(tweets_file_name_en, 'a+'))
+					print(d, file=open(tweets_file_name_filtered, 'a+'))
 			if not used:
 				print(d, file=open(tweets_file_name, 'a+'))
 		num_tweets += len(tweets)
 		print(str(num_tweets) + " tweets, " + str(num_filtered) + " filtered")
 		start = until
+
+
+def sentiment(topic):
+	nltk.download('twitter_samples')
+	from nltk.corpus import twitter_samples
+	pos_tweets = twitter_samples.strings('positive_tweets.json')  # should be 5000 tweets
+	neg_tweets = twitter_samples.strings('negative_tweets.json')  # should be 5000 tweets
+	all_tweets = twitter_samples.strings('tweets.20150430-223406.json')  # should be 20000 tweets
+	tweets_file_name_en = filtered_dir + '/' + topic + '.txt'
+	print("Looking for data in " + tweets_file_name_en)
+	print("Could" + (" not " if not os.path.exists(tweets_file_name_en) else " ") + "find it!")
+
+
+def getCommand():
+	command = input('\"acquire\" or \"sentiment\": ')
+	if command == "acquire":
+		num_per_month = input('tweets per day: ')
+		start_date = input("start date: (yyyy-mm-dd): ")
+		min_fame = input("min fame (2 * retweets + favourites): ")
+		acquireTweets(tweet_topic, int(num_per_month), parser.parse(start_date), int(min_fame))
+	elif command == "sentiment":
+		sentiment(tweet_topic)
+	else:
+		print("what?")
+		getCommand()
 
 
 if __name__ == '__main__':
@@ -95,8 +120,8 @@ if __name__ == '__main__':
 		os.makedirs(filtered_dir)
 	if not os.path.exists(sent_dir):
 		os.makedirs(sent_dir)
-	tweet_topic = input('topic: ')
-	num_per_month = input('tweets per day: ')
-	start_date = input("start date: (yyyy-mm-dd): ")
-	min_fame = input("min fame (2 * retweets + favourites): ")
-	main(tweet_topic, int(num_per_month), parser.parse(start_date), int(min_fame))
+	while(True):	# yeah, i know
+		tweet_topic = input('topic: ')
+		getCommand()
+		print("\n\nCool, done, next:")
+
