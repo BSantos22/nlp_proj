@@ -92,9 +92,18 @@ def sentiment(topic):
 	pos_tweets = twitter_samples.strings('positive_tweets.json')  # should be 5000 tweets
 	neg_tweets = twitter_samples.strings('negative_tweets.json')  # should be 5000 tweets
 	all_tweets = twitter_samples.strings('tweets.20150430-223406.json')  # should be 20000 tweets
-	tweets_file_name_en = filtered_dir + '/' + topic + '.txt'
-	print("Looking for data in " + tweets_file_name_en)
-	print("Could" + (" not " if not os.path.exists(tweets_file_name_en) else " ") + "find it!")
+	tweets_file_name = filtered_dir + '/' + topic + '.txt'
+	print("Looking for data in " + tweets_file_name)
+	print("Could" + (" not " if not os.path.exists(tweets_file_name) else " ") + "find it!")
+	'''
+	- load saved tweet data from tweets_fine_name
+	- train classifier using twitter namples
+	- sentiment analysis
+	- also maybe train classifier using sentiment lexicons
+	- sentiment analysis, compare! Which performs better (maybe try both?)
+	- save positive and negative tweets to different lists
+	- look for patterns that only occur in one group
+	'''
 
 
 def getCommand():
@@ -120,7 +129,7 @@ if __name__ == '__main__':
 		os.makedirs(filtered_dir)
 	if not os.path.exists(sent_dir):
 		os.makedirs(sent_dir)
-	while(True):	# yeah, i know
+	while(True):  # yeah, i know
 		tweet_topic = input('topic: ')
 		getCommand()
 		print("\n\nCool, done, next:")
