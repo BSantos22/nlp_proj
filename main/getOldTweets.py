@@ -13,6 +13,7 @@ from nltk.tokenize import TweetTokenizer
 import datetime
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
+from pprint import pprint
 
 nltk.download('stopwords')
 
@@ -94,7 +95,20 @@ def sentiment(topic):
 	all_tweets = twitter_samples.strings('tweets.20150430-223406.json')  # should be 20000 tweets
 	tweets_file_name = filtered_dir + '/' + topic + '.txt'
 	print("Looking for data in " + tweets_file_name)
-	print("Could" + (" not " if not os.path.exists(tweets_file_name) else " ") + "find it!")
+	found_it = os.path.exists(tweets_file_name)
+	print("Could" + (" not " if not found_it else " ") + "find it!")
+	if found_it:
+		tweets = []
+		s = open(tweets_file_name).read()
+		while s:
+			s = s.strip()
+			obj, pos = json.JSONDecoder().raw_decode(s)
+			if not pos:
+				raise ValueError('no JSON object found at %i' % pos)
+			tweets.append(obj)
+			s = s[pos:]
+		for t in tweets:
+			pprint(t)
 	'''
 	- load saved tweet data from tweets_fine_name
 	- train classifier using twitter namples
