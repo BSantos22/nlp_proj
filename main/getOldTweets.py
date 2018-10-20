@@ -151,7 +151,6 @@ if __name__ == '__main__':
 		os.makedirs(sent_dir)
 	while(True):  # yeah, i know
 		tweet_topic = input('topic: ')
-		#__# getCommand()
-		sentiment(tweet_topic)
+		getCommand()
 		print("\n\nCool, done, next:")
 
