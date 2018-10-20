@@ -1,5 +1,6 @@
 import sys
 import json
+
 if sys.version_info[0] < 3:
 	import got
 else:
@@ -12,7 +13,6 @@ from nltk.tokenize import TweetTokenizer
 import datetime
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
-import seaborn as sns
 import numpy as np
 
 nltk.download('stopwords')
@@ -115,7 +115,6 @@ def sentiment(topic):
 		sid = SentimentIntensityAnalyzer()
 		all_sentiments = []
 		for tweet in tweets:
-			print(tweet['Text'])
 			ss = sid.polarity_scores(tweet['Text'])
 			tweet['score'] = ss['compound']
 			all_sentiments.append(tweet['score'])
@@ -127,16 +126,19 @@ def sentiment(topic):
 			d = json.dumps(tweet, sort_keys=True, indent=4)
 			print(d, file=open(sent_dir+"/"+topic+"_"+sent+".txt", 'a+'))
 
-		tweets = sorted(tweets, key=lambda k: k['score'])[::-1]
-		for tweet in tweets:
-			print('\n{0}: {1}, '.format(tweet['Text'], tweet['score']))
+		#tweets = sorted(tweets, key=lambda k: k['score'])[::-1]
+		#for tweet in tweets:
+		#	print('\n{0}: {1}, '.format(tweet['Text'], tweet['score']))
 		print(all_sentiments)
-		plt.hist(all_sentiments, bins=[-1, -edge, edge, 1])
+		binCount = plt.hist(all_sentiments, bins=[-1, -edge, edge, 1])[0]
+		print(binCount)
 		plt.hist(all_sentiments)
 		plt.savefig(sent_dir+"/"+topic+"_plot.png")
+		plt.clf()
 		std = np.std(all_sentiments)
-		print("Controversial " + str(std > edge))
-		d = {"edge": edge, "std": std, "sentiments": all_sentiments}
+		controversial = std > edge and abs(binCount[0] - binCount[2]) < len(all_sentiments)/5
+		print("Controversial " + str(controversial))
+		d = {"positives": binCount[2], "neutrals": binCount[1], "negatives": binCount[0], "edge": edge, "std": std, "controversial": str(controversial), "sentiments": all_sentiments}
 		print(json.dumps(d), file=open(sent_dir+"/"+topic+"_polarisation.txt", 'w+'))
 	'''
 	- load saved tweet data from tweets_fine_name
