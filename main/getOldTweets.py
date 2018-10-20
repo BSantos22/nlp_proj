@@ -12,7 +12,8 @@ from nltk.tokenize import TweetTokenizer
 import datetime
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
-from pprint import pprint
+import seaborn as sns
+import numpy as np
 
 nltk.download('stopwords')
 
@@ -85,12 +86,16 @@ def acquireTweets(topic, tweets_per_month, start, fame):
 		print(str(num_tweets) + " tweets, " + str(num_filtered) + " filtered")
 		start = until
 
-
+# At first I put everything between 0.33 and -0.33 as neutral, but some of those are already pretty
+# opinionated, for instance: "That Kavanaugh even showed up to that bizarre White House pep rally shows how temperamentally unqualified he is to sit on SCOTUS."
+# had a score of only -0.3182.
+# For now I put the line at -0.2 and 0.2
 def sentiment(topic):
+	import matplotlib.pyplot as plt
+	edge = 0.2
 	nltk.download('twitter_samples')
 	nltk.download('vader_lexicon')
 
-	from nltk.corpus import twitter_samples
 	from nltk.sentiment.vader import SentimentIntensityAnalyzer
 	
 	tweets_file_name = filtered_dir + '/' + topic + '.txt'
@@ -108,13 +113,31 @@ def sentiment(topic):
 			tweets.append(obj)
 			s = s[pos:]
 		sid = SentimentIntensityAnalyzer()
+		all_sentiments = []
 		for tweet in tweets:
 			print(tweet['Text'])
 			ss = sid.polarity_scores(tweet['Text'])
 			tweet['score'] = ss['compound']
+			all_sentiments.append(tweet['score'])
+			sent = "neg"
+			if -edge <= tweet['score'] <= edge:
+				sent = "neu"
+			elif tweet['score'] > edge:
+				sent = "pos"
+			d = json.dumps(tweet, sort_keys=True, indent=4)
+			print(d, file=open(sent_dir+"/"+topic+"_"+sent+".txt", 'a+'))
+
 		tweets = sorted(tweets, key=lambda k: k['score'])[::-1]
 		for tweet in tweets:
-			print('{0}: {1}, '.format(tweet['Text'], tweet['score'])) 
+			print('\n{0}: {1}, '.format(tweet['Text'], tweet['score']))
+		print(all_sentiments)
+		plt.hist(all_sentiments, bins=[-1, -edge, edge, 1])
+		plt.hist(all_sentiments)
+		plt.savefig(sent_dir+"/"+topic+"_plot.png")
+		std = np.std(all_sentiments)
+		print("Controversial " + str(std > edge))
+		d = {"edge": edge, "std": std, "sentiments": all_sentiments}
+		print(json.dumps(d), file=open(sent_dir+"/"+topic+"_polarisation.txt", 'w+'))
 	'''
 	- load saved tweet data from tweets_fine_name
 	- train classifier using twitter namples
@@ -153,4 +176,3 @@ if __name__ == '__main__':
 		tweet_topic = input('topic: ')
 		getCommand()
 		print("\n\nCool, done, next:")
-
