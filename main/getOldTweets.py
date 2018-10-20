@@ -1,6 +1,5 @@
 import sys
 import json
-
 if sys.version_info[0] < 3:
 	import got
 else:
@@ -89,10 +88,11 @@ def acquireTweets(topic, tweets_per_month, start, fame):
 
 def sentiment(topic):
 	nltk.download('twitter_samples')
+	nltk.download('vader_lexicon')
+
 	from nltk.corpus import twitter_samples
-	pos_tweets = twitter_samples.strings('positive_tweets.json')  # should be 5000 tweets
-	neg_tweets = twitter_samples.strings('negative_tweets.json')  # should be 5000 tweets
-	all_tweets = twitter_samples.strings('tweets.20150430-223406.json')  # should be 20000 tweets
+	from nltk.sentiment.vader import SentimentIntensityAnalyzer
+	
 	tweets_file_name = filtered_dir + '/' + topic + '.txt'
 	print("Looking for data in " + tweets_file_name)
 	found_it = os.path.exists(tweets_file_name)
@@ -107,8 +107,14 @@ def sentiment(topic):
 				raise ValueError('no JSON object found at %i' % pos)
 			tweets.append(obj)
 			s = s[pos:]
-		for t in tweets:
-			pprint(t)
+		sid = SentimentIntensityAnalyzer()
+		for tweet in tweets:
+			print(tweet['Text'])
+			ss = sid.polarity_scores(tweet['Text'])
+			tweet['score'] = ss['compound']
+		tweets = sorted(tweets, key=lambda k: k['score'])[::-1]
+		for tweet in tweets:
+			print('{0}: {1}, '.format(tweet['Text'], tweet['score'])) 
 	'''
 	- load saved tweet data from tweets_fine_name
 	- train classifier using twitter namples
@@ -145,6 +151,7 @@ if __name__ == '__main__':
 		os.makedirs(sent_dir)
 	while(True):  # yeah, i know
 		tweet_topic = input('topic: ')
-		getCommand()
+		#__# getCommand()
+		sentiment(tweet_topic)
 		print("\n\nCool, done, next:")
 
