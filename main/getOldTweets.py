@@ -22,6 +22,7 @@ tweets_dir = "results"
 raw_dir = tweets_dir + "/filteredOut"
 filtered_dir = tweets_dir + "/tweets"
 sent_dir = tweets_dir + "/sentiments"
+anal_dir = tweets_dir + "/analysis"
 time_format = "%Y-%m-%d"
 
 def tweets_from_file(file):
@@ -107,7 +108,6 @@ def acquireTweets(topic, tweets_per_month, start, fame):
 def sentiment(topic):
 	import matplotlib.pyplot as plt
 	edge = 0.2
-	nltk.download('twitter_samples')
 	nltk.download('vader_lexicon')
 
 	from nltk.sentiment.vader import SentimentIntensityAnalyzer
@@ -158,6 +158,12 @@ def sentiment(topic):
 	'''
 
 def analyse(topic):
+	import nltk
+	nltk.download('wordnet')
+
+	analysis_neg = {}
+	analysis_pos = {}
+
 	sentiment_files = [
 		sent_dir + '/' + topic + '_neg.txt',
 		sent_dir + '/' + topic + '_neu.txt',
@@ -175,7 +181,15 @@ def analyse(topic):
 	negative_tweets = tweets_from_file(sentiment_files[0])
 	positive_tweets = tweets_from_file(sentiment_files[2])
 
-	print("Lexical diversity: "+str(pattern_analyzer.lexical_diversity()))
+	analysis_neg["lexicalDiversity"] = pattern_analyzer.lexical_diversity(negative_tweets)
+	analysis_pos["lexicalDiversity"] = pattern_analyzer.lexical_diversity(positive_tweets)
+
+	d = json.dumps(analysis_neg, sort_keys=True, indent=4)
+	print(d, file=open(anal_dir + "/" + topic + "_neg.txt", 'w+'))
+	d = json.dumps(analysis_pos, sort_keys=True, indent=4)
+	print(d, file=open(anal_dir + "/" + topic + "_pos.txt", 'w+'))
+
+
 
 
 def getCommand(topic):
@@ -203,6 +217,8 @@ def start():
 		os.makedirs(filtered_dir)
 	if not os.path.exists(sent_dir):
 		os.makedirs(sent_dir)
+	if not os.path.exists(anal_dir):
+		os.makedirs(anal_dir)
 	while(True):  # yeah, i know
 		topic = input('topic: ')
 		getCommand(topic)
