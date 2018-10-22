@@ -95,12 +95,11 @@ def acquireTweets(topic, tweets_per_month, start, fame):
 					used = True
 					num_filtered += 1
 					tweet["tokens"] = str(words_set)
-					d = json.dumps(tweet, sort_keys=True, indent=4)
 					print(d, file=open(tweets_file_name_filtered, 'a+'))
 			if not used:
 				print(d, file=open(tweets_file_name, 'a+'))
 		num_tweets += len(tweets)
-		print(str(num_tweets) + " tweets, " + str(num_filtered) + " filtered")
+		print(str(num_tweets) + " tweets, " + str(num_filtered) + " of interest")
 		start = until
 
 # At first I put everything between 0.33 and -0.33 as neutral, but some of those are already pretty
@@ -199,9 +198,15 @@ def analyse(topic):
 
 	word_biases = pattern_analyzer.biased_words(negative_tweets, positive_tweets, topic, float(frequency_weight))
 	index = len(word_biases)
+	row = "#rank: " + "word" + (" " * (30 - len("word"))) + "negative" + (" " * (30 - len("negative"))) + "positive" + (" " * (30 - len("positive"))) + "imbalance, relative frequency" + (" " * (30 - len("imbalance, relative frequency")))
+	print(row)
+	print(row, file=biases_file)
+	print("-"*len(row))
+	print("-"*len(row), file=biases_file)
 	for x in word_biases:
 		row = "#"+str(index)+": " + x[0] + (" " * (30 - len(x[0]))) + str(x[1][0]) + (" " * (30 - len(str(x[1][0])))) + str(x[1][1]) + (" " * (30 - len(str(x[1][1])))) + str(x[1][2])
 		try:
+			print(row)
 			print(row, file=biases_file)
 		except UnicodeEncodeError:
 			print("Could not save")
@@ -212,8 +217,6 @@ def analyse(topic):
 	print(d, file=open(topic_dir + "/" + "neg.txt", 'w+'))
 	d = json.dumps(analysis_pos, sort_keys=True, indent=4)
 	print(d, file=open(topic_dir + "/" + "pos.txt", 'w+'))
-
-
 
 
 def getCommand(topic):

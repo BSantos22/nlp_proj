@@ -133,9 +133,4 @@ def biased_words(group1, group2, topic, frequency_weight):
 	vers_count_list = []
 	for key in versus_keys_sorted:
 		vers_count_list.append((key, versus_counts[key]))
-
-	index = len(vers_count_list)
-	for x in vers_count_list:
-		print("#"+str(index)+": " + x[0] + (" " * (30 - len(x[0]))) + str(x[1][0]) + (" " * (30 - len(str(x[1][0])))) + str(x[1][1]) + (" " * (30 - len(str(x[1][1])))) + str(x[1][2]))
-		index -= 1
 	return vers_count_list
