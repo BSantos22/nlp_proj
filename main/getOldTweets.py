@@ -1,5 +1,7 @@
 import sys
 import json
+import shutil
+from operator import pos
 
 if sys.version_info[0] < 3:
 	import got
@@ -158,6 +160,10 @@ def sentiment(topic):
 	'''
 
 def analyse(topic):
+	topic_dir = anal_dir + "/" + topic
+	if os.path.exists(topic_dir):
+		shutil.rmtree(topic_dir)
+	os.makedirs(topic_dir)
 	import nltk
 	nltk.download('wordnet')
 
@@ -184,10 +190,25 @@ def analyse(topic):
 	analysis_neg["lexicalDiversity"] = pattern_analyzer.lexical_diversity(negative_tweets)
 	analysis_pos["lexicalDiversity"] = pattern_analyzer.lexical_diversity(positive_tweets)
 
+	analysis_neg["profanityShare"] = pattern_analyzer.profanity_share(negative_tweets)
+	analysis_pos["profanityShare"] = pattern_analyzer.profanity_share(positive_tweets)
+
+	biases_file = open(topic_dir + "/" + "word_biases.txt", 'w+')
+	word_biases = pattern_analyzer.biased_words(negative_tweets, positive_tweets, topic)
+	index = len(word_biases)
+	for x in word_biases:
+		row = "#"+str(index)+": " + x[0] + (" " * (30 - len(x[0]))) + str(x[1][0]) + (" " * (30 - len(str(x[1][0])))) + str(x[1][1]) + (" " * (30 - len(str(x[1][1])))) + str(x[1][2])
+		try:
+			print(row, file=biases_file)
+		except UnicodeEncodeError:
+			print("Could not save")
+			print(row)
+		index -= 1
+
 	d = json.dumps(analysis_neg, sort_keys=True, indent=4)
-	print(d, file=open(anal_dir + "/" + topic + "_neg.txt", 'w+'))
+	print(d, file=open(topic_dir + "/" + "neg.txt", 'w+'))
 	d = json.dumps(analysis_pos, sort_keys=True, indent=4)
-	print(d, file=open(anal_dir + "/" + topic + "_pos.txt", 'w+'))
+	print(d, file=open(topic_dir + "/" + "pos.txt", 'w+'))
 
 
 
