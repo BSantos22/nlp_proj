@@ -194,7 +194,10 @@ def analyse(topic):
 	analysis_pos["profanityShare"] = pattern_analyzer.profanity_share(positive_tweets)
 
 	biases_file = open(topic_dir + "/" + "word_biases.txt", 'w+')
-	word_biases = pattern_analyzer.biased_words(negative_tweets, positive_tweets, topic)
+
+	frequency_weight = input("Weight of frequency (0...1):")
+
+	word_biases = pattern_analyzer.biased_words(negative_tweets, positive_tweets, topic, float(frequency_weight))
 	index = len(word_biases)
 	for x in word_biases:
 		row = "#"+str(index)+": " + x[0] + (" " * (30 - len(x[0]))) + str(x[1][0]) + (" " * (30 - len(str(x[1][0])))) + str(x[1][1]) + (" " * (30 - len(str(x[1][1])))) + str(x[1][2])

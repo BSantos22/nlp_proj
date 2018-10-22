@@ -71,7 +71,7 @@ def profanity_share(tweets):
 
 
 # will filter out stopwords, non-words and the topic (as it throws off the calculation, it's kinda all over the place)
-def biased_words(group1, group2, topic):
+def biased_words(group1, group2, topic, frequency_weight):
 	group1_wordcount = {}
 	group2_wordcount = {}
 	versus_counts = {}
@@ -123,8 +123,6 @@ def biased_words(group1, group2, topic):
 			if word in group1_wordcount:
 				occurrences_other_group = group1_wordcount[word]
 			versus_counts[word] = (occurrences_other_group, group2_wordcount[word], calc_bias(occurrences_other_group, group2_wordcount[word]))
-
-	frequency_weight = 0.9
 
 	def compare(item1, item2):
 		return versus_counts[item1][2][0]+versus_counts[item1][2][1] * (frequency_weight / max_relative_to_total['value']) - versus_counts[item2][2][0] - versus_counts[item2][2][1] * (frequency_weight / max_relative_to_total['value'])
