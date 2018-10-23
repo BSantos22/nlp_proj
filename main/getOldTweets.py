@@ -31,7 +31,8 @@ def tweet_to_json(tweet):
 			'Username': tweet.username,
 			'Permalink': tweet.permalink,
 			'Mentions': tweet.mentions,
-			'Date': str(tweet.date)}
+			'Date': str(tweet.date),
+			'Side': ''}
 
 
 def tweet_is_english(tweet):
@@ -86,19 +87,13 @@ def acquireTweets(topic, tweets_per_month, start, fame):
 		start = until
 
 
-def sentiment(topic):
-	nltk.download('twitter_samples')
-	nltk.download('vader_lexicon')
-
-	from nltk.corpus import twitter_samples
-	from nltk.sentiment.vader import SentimentIntensityAnalyzer
-	
+def load_tweets(topic):
 	tweets_file_name = filtered_dir + '/' + topic + '.txt'
 	print("Looking for data in " + tweets_file_name)
 	found_it = os.path.exists(tweets_file_name)
 	print("Could" + (" not " if not found_it else " ") + "find it!")
+	tweets = []
 	if found_it:
-		tweets = []
 		s = open(tweets_file_name).read()
 		while s:
 			s = s.strip()
@@ -107,23 +102,101 @@ def sentiment(topic):
 				raise ValueError('no JSON object found at %i' % pos)
 			tweets.append(obj)
 			s = s[pos:]
-		sid = SentimentIntensityAnalyzer()
-		for tweet in tweets:
+	return tweets
+
+
+def sentiment(topic, tweets):
+	nltk.download('vader_lexicon')
+	from nltk.sentiment.vader import SentimentIntensityAnalyzer
+	sid = SentimentIntensityAnalyzer()
+	for tweet in tweets:
+		ss = sid.polarity_scores(tweet['Text'])
+		tweet['score'] = ss['compound']
+	tweets = sorted(tweets, key=lambda k: k['score'])[::-1]
+	results = {
+		'TPOS': 0,
+		'FPOS': 0,
+		'TNEU': 0,
+		'FNEU': 0,
+		'TNEG': 0,
+		'FNEG': 0
+	}
+	for tweet in tweets:
+		tweet = tweet_to_json(tweet)
+		d = json.dumps(tweet, sort_keys=True, indent=4)
+		if tweet['score'] > 0.2:
+			file_name = sent_dir + '/' + topic + '_support.txt'
+			if tweet['Side'] == 'pos':
+				results['TPOS'] += 1
+			elif tweet['Side'] == 'neg':
+				results['FNEG'] += 1
+			else:
+				results['FNEU'] += 1
+		elif tweet['score'] < -0.2:
+			file_name = sent_dir + '/' + topic + '_against.txt'
+			if tweet['Side'] == 'pos':
+				results['FPOS'] += 1
+			elif tweet['Side'] == 'neg':
+				results['TNEG'] += 1
+			else:
+				results['FNEU'] += 1
+		else:
+			file_name = sent_dir + '/' + topic + '_neutral.txt'
+			if tweet['Side'] == 'pos':
+				results['FPOS'] += 1
+			elif tweet['Side'] == 'neg':
+				results['FNEG'] += 1
+			else:
+				results['TNEU'] += 1
+		print(d, file=open(file_name, 'a+'))
+	return results
+
+
+def dependency_parser(topic, tweets):
+	from nltk.parse.stanford import StanfordDependencyParser
+	path_to_jar = './main/stanford-dependency-parser/stanford-parser.jar'
+	path_to_model = './main/stanford-dependency-parser/stanford-parser-english-models.jar'
+	dp = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_model)
+	lexicon = load_vader_lexicon()
+
+	support = []
+	against = []
+	inconclusive = []
+	for tweet in tweets:
+		result = [list(parse.triples()) for parse in dp.raw_parse(tweet['Text'])]
+		for parse in result:
+			score = []
+			for dependency in parse:
+				try:
+					if (tweet_topic.upper() in dependency[0][0].upper()):
+						score.append(lexicon[dependency[2][0].lower()])
+					if (tweet_topic.upper() in dependency[2][0].upper()):
+						score.append(lexicon[dependency[0][0].lower()])
+				except KeyError:
+					continue
+			print(score)
+			if not score:
+				inconclusive.append(tweet)
+				print('Inconclusive')
+			if (all(float(i) > 0 for i in score)):
+				support.append(tweet)
+				print('Support')
+			elif (all(float(i) < 0 for i in score)):
+				against.append(tweet)
+				print('Against')
+			else:
+				inconclusive.append(tweet)
+				print('Inconclusive')
 			print(tweet['Text'])
-			ss = sid.polarity_scores(tweet['Text'])
-			tweet['score'] = ss['compound']
-		tweets = sorted(tweets, key=lambda k: k['score'])[::-1]
-		for tweet in tweets:
-			print('{0}: {1}, '.format(tweet['Text'], tweet['score'])) 
-	'''
-	- load saved tweet data from tweets_fine_name
-	- train classifier using twitter namples
-	- sentiment analysis
-	- also maybe train classifier using sentiment lexicons
-	- sentiment analysis, compare! Which performs better (maybe try both?)
-	- save positive and negative tweets to different lists
-	- look for patterns that only occur in one group
-	'''
+	return support, against, inconclusive
+
+
+def load_vader_lexicon():
+	lines = open('./main/vader_lexicon/vader_lexicon.txt').readlines()
+	lexicon = {}
+	for line in lines:
+		lexicon[line.split('\t')[0]] = line.split('\t')[1]
+	return lexicon
 
 
 def getCommand():
@@ -134,7 +207,9 @@ def getCommand():
 		min_fame = input("min fame (2 * retweets + favourites): ")
 		acquireTweets(tweet_topic, int(num_per_month), parser.parse(start_date), int(min_fame))
 	elif command == "sentiment":
-		sentiment(tweet_topic)
+		tweets = load_tweets(tweet_topic)
+		results = sentiment(tweet_topic, tweets)
+		print(results)
 	else:
 		print("what?")
 		getCommand()
@@ -151,7 +226,7 @@ if __name__ == '__main__':
 		os.makedirs(sent_dir)
 	while(True):  # yeah, i know
 		tweet_topic = input('topic: ')
-		#__# getCommand()
-		sentiment(tweet_topic)
+		getCommand()
+		#dependency_parser(tweets, tweet_topic)
 		print("\n\nCool, done, next:")
 
