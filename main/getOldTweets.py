@@ -68,7 +68,7 @@ def tweet_is_english(tweet):
 	return None
 
 
-def acquireTweets(topic, tweets_per_month, start, fame):
+def acquireTweets(topic, tweets_per_month, start, fame):	# could probs be improved by threading
 	file_name = topic + "_" + str(tweets_per_month) + "_" + str(fame)
 
 	def tweet_is_fame_dayum(tweet):
