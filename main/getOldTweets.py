@@ -49,6 +49,24 @@ def tweets_from_file(topic):
 	return tweets
 
 
+def tweets_from_path(path):
+	tweets = []
+	print("Looking for data in " + path)
+	if not os.path.exists(path):
+		print("Aww man, could not find " + path)
+		print("Be sure to acquire data first!")
+		return tweets
+	s = open(path).read()
+	while s:
+		s = s.strip()
+		obj, pos = json.JSONDecoder().raw_decode(s)
+		if not pos:
+			raise ValueError('no JSON object found at %i' % pos)
+		tweets.append(obj)
+		s = s[pos:]
+	return tweets
+
+
 def tweet_to_json(tweet):
 	return {'Text': tweet['Text'],
 			'Retweets': tweet['Retweets'],
@@ -282,8 +300,8 @@ def dependency_parser(topic, tweets, out, uses_sentiment):
 				results['TNEG'] += 1
 			else:
 				results['FNEG(NEU)'] += 1
-	d = json.dumps(tweet, sort_keys=True, indent=4)
-	print(d, file=open(file_name, 'a+'))
+		d = json.dumps(tweet, sort_keys=True, indent=4)
+		print(d, file=open(file_name, 'a+'))
 	return results
 
 
@@ -331,7 +349,7 @@ def load_vader_lexicon():
 	return lexicon
 
 
-def analyse(topic):
+def analyse(topic, grouping_method):
 	topic_dir = anal_dir + "/" + topic
 	if os.path.exists(topic_dir):
 		shutil.rmtree(topic_dir)
@@ -343,12 +361,13 @@ def analyse(topic):
 	analysis_pos = {}
 
 	sentiment_files = [
-		sent_dir + '/' + topic + '_neg.txt',
-		sent_dir + '/' + topic + '_neu.txt',
-		sent_dir + '/' + topic + '_pos.txt',
-		sent_dir + '/' + topic + '_polarisation.txt'
+		sent_dir + '/' + topic + '_against_' + grouping_method + '.txt',
+		sent_dir + '/' + topic + '_neutral_' + grouping_method + '.txt',
+		sent_dir + '/' + topic + '_support_' + grouping_method + '.txt',
+		sent_dir + '/' + topic + '_polarisation_' + grouping_method + '.txt'
 	]
 	print("Looking for sentiment data...")
+
 	for file in sentiment_files:
 		if not os.path.exists(file):
 			print("Aww man, could not find " + file)
@@ -356,8 +375,8 @@ def analyse(topic):
 			return
 	print("Aight, let's see...")
 
-	negative_tweets = tweets_from_file(sentiment_files[0])
-	positive_tweets = tweets_from_file(sentiment_files[2])
+	negative_tweets = tweets_from_path(sentiment_files[0])
+	positive_tweets = tweets_from_path(sentiment_files[2])
 
 	analysis_neg["lexicalDiversity"] = pattern_analyzer.lexical_diversity(negative_tweets)
 	analysis_pos["lexicalDiversity"] = pattern_analyzer.lexical_diversity(positive_tweets)
@@ -370,6 +389,10 @@ def analyse(topic):
 	frequency_weight = input("Weight of frequency (0...1):")
 
 	word_biases = pattern_analyzer.biased_words(negative_tweets, positive_tweets, topic, float(frequency_weight))
+
+	analysis_neg["attitudeTopWords"] = pattern_analyzer.attitude_towards_top_words(negative_tweets, word_biases)
+	analysis_pos["attitudeTopWords"] = pattern_analyzer.attitude_towards_top_words(positive_tweets, word_biases)
+
 	index = len(word_biases)
 	row = "#rank: " + "word" + (" " * (30 - len("word"))) + "negative" + (" " * (30 - len("negative"))) + "positive" + (" " * (30 - len("positive"))) + "imbalance, relative frequency" + (" " * (30 - len("imbalance, relative frequency")))
 	print(row)
@@ -425,7 +448,8 @@ def getCommand(topic):
 		sentiment_results(topic, results, "sent_dep")
 		return
 	elif command == "7":
-		analyse(topic)
+		grouping_method = input('grouping method: ')
+		analyse(topic, grouping_method)
 	else:
 		print("what?")
 		getCommand(topic)

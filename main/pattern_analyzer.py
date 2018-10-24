@@ -134,3 +134,7 @@ def biased_words(group1, group2, topic, frequency_weight):
 	for key in versus_keys_sorted:
 		vers_count_list.append((key, versus_counts[key]))
 	return vers_count_list
+
+
+def attitude_towards_top_words(tweets, word_biases):
+	return ""
