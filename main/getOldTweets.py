@@ -27,6 +27,9 @@ sent_dir = tweets_dir + "/sentiments"
 anal_dir = tweets_dir + "/analysis"
 time_format = "%Y-%m-%d"
 
+edge = 0.2
+
+
 def tweets_from_file(topic):
 	tweets = []
 	tweets_file_name = filtered_dir + '/' + topic + '.txt'
@@ -115,8 +118,6 @@ def acquireTweets(topic, tweets_per_month, start, fame):	# could probs be improv
 # had a score of only -0.3182.
 # For now I put the line at -0.2 and 0.2
 def sentiment(topic, tweets):
-	import matplotlib.pyplot as plt
-	edge = 0.2
 	results = {
 		'TPOS': 0,
 		'FPOS(NEU)': 0,
@@ -130,96 +131,128 @@ def sentiment(topic, tweets):
 		"edge": "",
 		"std": "",
 		"controversial": "",
-		"sentiments": ""
+		"sentiments": []
 	}
 	nltk.download('vader_lexicon')
 	from nltk.sentiment.vader import SentimentIntensityAnalyzer
 	sid = SentimentIntensityAnalyzer()
-	all_sentiments = []
 	for tweet in tweets:
 		ss = sid.polarity_scores(tweet['Text'])
 		tweet['score'] = ss['compound']
-		all_sentiments.append(tweet['score'])
+		results['sentiments'].append(tweet['score'])
 		if tweet['score'] > edge:
 			file_name = sent_dir + '/' + topic + '_support_sent.txt'
 			if tweet['Side'] == 'pos':
 				results['TPOS'] += 1
 			elif tweet['Side'] == 'neg':
-				results['FNEG(POS)'] += 1
+				results['FPOS(NEG)'] += 1
 			else:
-				results['FNEU(POS)'] += 1
+				results['FPOS(NEU)'] += 1
 		elif tweet['score'] < -edge:
 			file_name = sent_dir + '/' + topic + '_against_sent.txt'
 			if tweet['Side'] == 'pos':
-				results['FPOS(NEG)'] += 1
+				results['FNEG(POS)'] += 1
 			elif tweet['Side'] == 'neg':
 				results['TNEG'] += 1
 			else:
-				results['FNEU(NEG)'] += 1
+				results['FNEG(NEU)'] += 1
 		else:
 			file_name = sent_dir + '/' + topic + '_neutral_sent.txt'
 			if tweet['Side'] == 'pos':
-				results['FPOS(NEU)'] += 1
+				results['FNEU(POS)'] += 1
 			elif tweet['Side'] == 'neg':
-				results['FNEG(NEU)'] += 1
+				results['FNEU(NEG)'] += 1
 			else:
 				results['TNEU'] += 1
 		d = json.dumps(tweet, sort_keys=True, indent=4)
-		print(d, file=open(file_name, 'a+'))	
-		
-	binCount = plt.hist(all_sentiments, bins=[-1, -edge, edge, 1])[0]
+		print(d, file=open(file_name, 'a+'))
+	return results
+
+
+def sentiment_results(topic, results, result_type):
+	import matplotlib.pyplot as plt
+	binCount = plt.hist(results['sentiments'], bins=[-1, -edge, edge, 1])[0]
 	print(binCount)
-	plt.hist(all_sentiments)
-	plt.savefig(sent_dir+"/"+topic+"_plot.png")
+	plt.hist(results['sentiments'])
+	plt.savefig(sent_dir + "/" + topic + "_plot" + "_" + result_type + ".png")
 	plt.clf()
-	std = np.std(all_sentiments)
-	controversial = std > edge and abs(binCount[0] - binCount[2]) < len(all_sentiments)/5
+	std = np.std(results['sentiments'])
+	controversial = std > edge and abs(binCount[0] - binCount[2]) < len(results['sentiments'])/5
 	print("Controversial " + str(controversial))
 	results['edge'] = edge
 	results['std'] = std
 	results['controversial'] = str(controversial)
-	results['sentiments'] = all_sentiments
-	print(json.dumps(results), file=open(sent_dir+"/"+topic+"_polarisation.txt", 'w+'))
+	print(json.dumps(results), file=open(sent_dir + "/" + topic + "_polarisation" + "_" + result_type + ".txt", 'w+'))
 	return results
 
 
 def dependency_parser(topic, tweets):
-	from nltk.parse.stanford import StanfordDependencyParser
-	path_to_jar = './main/stanford-dependency-parser/stanford-parser.jar'
-	path_to_model = './main/stanford-dependency-parser/stanford-parser-english-models.jar'
-	dp = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_model)
+	import spacy
+	nlp = spacy.load('en')
 	lexicon = load_vader_lexicon()
 
-	support = []
-	against = []
-	inconclusive = []
+	results = {
+		'TPOS': 0,
+		'FPOS(NEU)': 0,
+		'FPOS(NEG)': 0,
+		'TNEU': 0,
+		'FNEU(POS)': 0,
+		'FNEU(NEG)': 0,
+		'TNEG': 0,
+		'FNEG(POS)': 0,
+		'FNEG(NEU)': 0,
+		"edge": "",
+		"std": "",
+		"controversial": "",
+		"sentiments": []
+	}
 	for tweet in tweets:
-		result = [list(parse.triples()) for parse in dp.raw_parse(tweet['Text'])]
-		for parse in result:
-			score = []
-			for dependency in parse:
-				try:
-					if (topic.upper() in dependency[0][0].upper()):
-						score.append(lexicon[dependency[2][0].lower()])
-					if (topic.upper() in dependency[2][0].upper()):
-						score.append(lexicon[dependency[0][0].lower()])
-				except KeyError:
-					continue
-			print(score)
-			if not score:
-				inconclusive.append(tweet)
-				print('Inconclusive')
-			if (all(float(i) > 0 for i in score)):
-				support.append(tweet)
-				print('Support')
-			elif (all(float(i) < 0 for i in score)):
-				against.append(tweet)
-				print('Against')
+		doc = nlp(tweet['Text'])
+		score = []
+		for token in doc:
+			try:
+				if (topic.upper() in token.text.upper()):
+					score.append(lexicon[token.head.text.lower()])
+				if (topic.upper() in token.head.text.upper()):
+					score.append(lexicon[token.text.lower()])
+			except KeyError:
+				continue
+		results['sentiments'].append(sum([float(i) for i in score]))
+		if not score:
+			file_name = sent_dir + '/' + topic + '_neutral_dep.txt'
+			if tweet['Side'] == 'pos':
+				results['FNEU(POS)'] += 1
+			elif tweet['Side'] == 'neg':
+				results['FNEU(NEG)'] += 1
 			else:
-				inconclusive.append(tweet)
-				print('Inconclusive')
-			print(tweet['Text'])
-	return support, against, inconclusive
+				results['TNEU'] += 1
+		elif (all(float(i) > 0 for i in score)):
+			file_name = sent_dir + '/' + topic + '_support_dep.txt'
+			if tweet['Side'] == 'pos':
+				results['TPOS'] += 1
+			elif tweet['Side'] == 'neg':
+				results['FPOS(NEU)'] += 1
+			else:
+				results['FPOS(NEU)'] += 1
+		elif (all(float(i) < 0 for i in score)):
+			file_name = sent_dir + '/' + topic + '_against_sent.txt'
+			if tweet['Side'] == 'pos':
+				results['FNEG(POS)'] += 1
+			elif tweet['Side'] == 'neg':
+				results['TNEG'] += 1
+			else:
+				results['FNEG(NEU)'] += 1
+		else:
+			file_name = sent_dir + '/' + topic + '_neutral_dep.txt'
+			if tweet['Side'] == 'pos':
+				results['FNEU(POS)'] += 1
+			elif tweet['Side'] == 'neg':
+				results['FNEU(NEG)'] += 1
+			else:
+				results['TNEU'] += 1
+	d = json.dumps(tweet, sort_keys=True, indent=4)
+	print(d, file=open(file_name, 'a+'))
+	return results
 
 
 def load_vader_lexicon():
@@ -292,7 +325,7 @@ def analyse(topic):
 
 
 def getCommand(topic):
-	command = input('1: acquire, 2: sentiment, 3: analyse\n')
+	command = input('1: acquire, 2: sentiment, 3: dependency, 4: sentiment & dependency, 5: analyse\n')
 	if command == "1":
 		num_per_month = input('tweets per day: ')
 		start_date = input("start date: (yyyy-mm-dd): ")
@@ -301,9 +334,15 @@ def getCommand(topic):
 	elif command == "2":
 		tweets = tweets_from_file(topic)
 		results = sentiment(topic, tweets)
-		#dependency_parser(tweets, tweet_topic)
-		print(results)
+		sentiment_results(topic, results, "sent")
 	elif command == "3":
+		tweets = tweets_from_file(topic)
+		results = dependency_parser(topic, tweets)
+		sentiment_results(topic, results, "dep")
+	elif command == "4":
+		#both
+		return
+	elif command == "5":
 		analyse(topic)
 	else:
 		print("what?")
