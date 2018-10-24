@@ -166,15 +166,15 @@ def sentiment(topic, tweets):
 				results['TNEU'] += 1
 		d = json.dumps(tweet, sort_keys=True, indent=4)
 		print(d, file=open(file_name, 'a+'))
-	return results
+	return results, tweets
 
 
-def sentiment_results(topic, results, result_type):
+def sentiment_results(topic, results, out):
 	import matplotlib.pyplot as plt
 	binCount = plt.hist(results['sentiments'], bins=[-1, -edge, edge, 1])[0]
 	print(binCount)
 	plt.hist(results['sentiments'])
-	plt.savefig(sent_dir + "/" + topic + "_plot" + "_" + result_type + ".png")
+	plt.savefig(sent_dir + "/" + topic + "_plot" + "_" + out + ".png")
 	plt.clf()
 	std = np.std(results['sentiments'])
 	controversial = std > edge and abs(binCount[0] - binCount[2]) < len(results['sentiments'])/5
@@ -182,11 +182,11 @@ def sentiment_results(topic, results, result_type):
 	results['edge'] = edge
 	results['std'] = std
 	results['controversial'] = str(controversial)
-	print(json.dumps(results), file=open(sent_dir + "/" + topic + "_polarisation" + "_" + result_type + ".txt", 'w+'))
+	print(json.dumps(results), file=open(sent_dir + "/" + topic + "_polarisation" + "_" + out + ".txt", 'w+'))
 	return results
 
 
-def dependency_parser(topic, tweets):
+def dependency_parser(topic, tweets, out, uses_sentiment):
 	import spacy
 	nlp = spacy.load('en')
 	lexicon = load_vader_lexicon()
@@ -218,41 +218,109 @@ def dependency_parser(topic, tweets):
 			except KeyError:
 				continue
 		results['sentiments'].append(sum([float(i) for i in score]))
-		if not score:
-			file_name = sent_dir + '/' + topic + '_neutral_dep.txt'
+		
+		if uses_sentiment:
+			if not score:
+				if tweet['score'] > edge:
+					rating = 'neu'
+				elif tweet['score'] < -edge:
+					rating = 'neu'
+				else:
+					rating = 'neu'
+			elif all(float(i) > 0 for i in score):
+				if tweet['score'] > edge:
+					rating = 'pos'
+				elif tweet['score'] < -edge:
+					rating = 'neu'
+				else:
+					rating = 'neu'
+			elif all(float(i) < 0 for i in score):
+				if tweet['score'] > edge:
+					rating = 'neu'
+				elif tweet['score'] < -edge:
+					rating = 'neg'
+				else:
+					rating = 'neg'
+			else:
+				if tweet['score'] > edge:
+					rating = 'pos'
+				elif tweet['score'] < -edge:
+					rating = 'neg'
+				else:
+					rating = 'neu'
+		else:
+			if not score:
+				rating = 'neu'
+			elif (all(float(i) > 0 for i in score)):
+				rating = 'pos'
+			elif (all(float(i) < 0 for i in score)):
+				rating = 'neg'
+			else:
+				rating = 'neu'
+
+		if rating == 'neu':
+			file_name = sent_dir + '/' + topic + '_neutral_' + out + '.txt'
 			if tweet['Side'] == 'pos':
 				results['FNEU(POS)'] += 1
 			elif tweet['Side'] == 'neg':
 				results['FNEU(NEG)'] += 1
 			else:
 				results['TNEU'] += 1
-		elif (all(float(i) > 0 for i in score)):
-			file_name = sent_dir + '/' + topic + '_support_dep.txt'
+		elif rating == 'pos':
+			file_name = sent_dir + '/' + topic + '_support_' + out + '.txt'
 			if tweet['Side'] == 'pos':
 				results['TPOS'] += 1
 			elif tweet['Side'] == 'neg':
 				results['FPOS(NEU)'] += 1
 			else:
 				results['FPOS(NEU)'] += 1
-		elif (all(float(i) < 0 for i in score)):
-			file_name = sent_dir + '/' + topic + '_against_sent.txt'
+		elif rating == 'neg':
+			file_name = sent_dir + '/' + topic + '_against_' + out + '.txt'
 			if tweet['Side'] == 'pos':
 				results['FNEG(POS)'] += 1
 			elif tweet['Side'] == 'neg':
 				results['TNEG'] += 1
 			else:
 				results['FNEG(NEU)'] += 1
-		else:
-			file_name = sent_dir + '/' + topic + '_neutral_dep.txt'
-			if tweet['Side'] == 'pos':
-				results['FNEU(POS)'] += 1
-			elif tweet['Side'] == 'neg':
-				results['FNEU(NEG)'] += 1
-			else:
-				results['TNEU'] += 1
 	d = json.dumps(tweet, sort_keys=True, indent=4)
 	print(d, file=open(file_name, 'a+'))
 	return results
+
+
+def preprocess_trump_tweets(topic, tweets):
+	import re
+	import itertools
+	for tweet in tweets:
+		tokens = tweet['Text'].split(' ')
+		# Remove @ and #
+		i = 0
+		while i < len(tokens):
+			if tokens[i] == '@' or tokens[i] == '#':
+				del tokens[i]
+				i -= 1
+			i += 1
+		
+		# Split words by uppercase
+		i = 0
+		while i < len(tokens):
+			tokens[i] = re.findall('[a-zA-Z][^A-Z]*', tokens[i])
+			i += 1
+		tokens = list(itertools.chain.from_iterable(tokens))
+
+		# Replace you and u with topic
+		for i in range(len(tokens)):
+			if topic not in tweet['Text']:
+				if tokens[i].lower() == 'you' or tokens[i].lower() == 'u':
+					tokens[i] = topic
+
+		# Replace he with topic
+		for i in range(len(tokens)):
+			if topic in tweet['Text']:
+				if tokens[i].lower() == 'he':
+					tokens[i] = topic
+		
+		tweet['Text'] = " ".join(tokens)
+	return tweets
 
 
 def load_vader_lexicon():
@@ -325,7 +393,7 @@ def analyse(topic):
 
 
 def getCommand(topic):
-	command = input('1: acquire, 2: sentiment, 3: dependency, 4: sentiment & dependency, 5: analyse\n')
+	command = input('1: acquire, 2: sentiment, 3: sentiment w/ preprocessing, 4: dependency, 5: dependency w/ preprocessing, 6: sentiment & dependency, 7: analyse\n')
 	if command == "1":
 		num_per_month = input('tweets per day: ')
 		start_date = input("start date: (yyyy-mm-dd): ")
@@ -333,16 +401,30 @@ def getCommand(topic):
 		acquireTweets(topic, int(num_per_month), parser.parse(start_date), int(min_fame))
 	elif command == "2":
 		tweets = tweets_from_file(topic)
-		results = sentiment(topic, tweets)
+		results, tweets = sentiment(topic, tweets)
 		sentiment_results(topic, results, "sent")
 	elif command == "3":
 		tweets = tweets_from_file(topic)
-		results = dependency_parser(topic, tweets)
-		sentiment_results(topic, results, "dep")
+		tweets = preprocess_trump_tweets(topic, tweets)
+		results, tweets = sentiment(topic, tweets)
+		sentiment_results(topic, results, "sent_pp")	
 	elif command == "4":
-		#both
-		return
+		tweets = tweets_from_file(topic)
+		results = dependency_parser(topic, tweets, "dep", False)
+		sentiment_results(topic, results, "dep")
 	elif command == "5":
+		tweets = tweets_from_file(topic)
+		tweets = preprocess_trump_tweets(topic, tweets)
+		results = dependency_parser(topic, tweets, "dep_pp", False)
+		sentiment_results(topic, results, "dep_pp")
+	elif command == "6":
+		tweets = tweets_from_file(topic)
+		results, tweets = sentiment(topic, tweets)
+		tweets = preprocess_trump_tweets(topic, tweets)
+		results = dependency_parser(topic, tweets, "sent_dep", True)
+		sentiment_results(topic, results, "sent_dep")
+		return
+	elif command == "7":
 		analyse(topic)
 	else:
 		print("what?")
