@@ -6,10 +6,10 @@
     "Mentions": "",
     "Permalink": "https://twitter.com/JustDebra4/status/1036041004477030400",
     "Retweets": 2,
+    "Side": "neg",
     "Text": "I\u2019d be happy if they would make American American again. We can always evolve and become better, but tRump has taken us backwards. It will take years to gain the trust back from our allies. pic.twitter.com/u8HxN6IY31",
     "Username": "",
-    "tokens": "['I', '\u2019', 'd', 'be', 'happy', 'if', 'they', 'would', 'make', 'American', 'American', 'again', '.', 'We', 'can', 'always', 'evolve', 'and', 'become', 'better', ',', 'but', 'tRump', 'has', 'taken', 'us', 'backwards', '.', 'It', 'will', 'take', 'years', 'to', 'gain', 'the', 'trust', 'back', 'from', 'our', 'allies', '.', 'pic.twitter.com/u8HxN6IY31']",
-    "Side": "neg"
+    "tokens": "['I', '\u2019', 'd', 'be', 'happy', 'if', 'they', 'would', 'make', 'American', 'American', 'again', '.', 'We', 'can', 'always', 'evolve', 'and', 'become', 'better', ',', 'but', 'tRump', 'has', 'taken', 'us', 'backwards', '.', 'It', 'will', 'take', 'years', 'to', 'gain', 'the', 'trust', 'back', 'from', 'our', 'allies', '.', 'pic.twitter.com/u8HxN6IY31']"
 }
 {
     "Date": "2018-09-02 01:59:57",
@@ -11553,7 +11553,7 @@
     "Text": "Donald Trump\u2019s favorite Fox News gets zero Emmys while CNN, MSNBC and NBC, with an Obama episode, win awards http://www.newsweek.com/donald-trump-fox-news-emmys-obama-1149922 \u2026",
     "Username": "",
     "tokens": "['Donald', 'Trump', '\u2019', 's', 'favorite', 'Fox', 'News', 'gets', 'zero', 'Emmys', 'while', 'CNN', ',', 'MSNBC', 'and', 'NBC', ',', 'with', 'an', 'Obama', 'episode', ',', 'win', 'awards', 'http://www.newsweek.com/donald-trump-fox-news-emmys-obama-1149922', '\u2026']",
-    "Side": neu
+    "Side": "neu"
 }
 {
     "Date": "2018-10-04 01:59:56",
@@ -14153,7 +14153,7 @@
     "Text": "Artists in the US are making a stand against Trump. Sana ganun din sa atin.... https://twitter.com/MagingLODI/status/1036270767833399296?s=19 \u2026",
     "Username": "",
     "tokens": "['Artists', 'in', 'the', 'US', 'are', 'making', 'a', 'stand', 'against', 'Trump', '.', 'Sana', 'ganun', 'din', 'sa', 'atin', '...', 'https://twitter.com/MagingLODI/status/1036270767833399296?s=19', '\u2026']",
-    "Side": neg
+    "Side": "neg"
 }
 {
     "Date": "2018-10-10 01:59:46",
@@ -15258,7 +15258,7 @@
     "Text": "Terrorists making more threats. Need to be locked up!",
     "Username": "",
     "tokens": "['Terrorists', 'making', 'more', 'threats', '.', 'Need', 'to', 'be', 'locked', 'up', '!']",
-    "Side": neu
+    "Side": "neu"
 }
 {
     "Date": "2018-10-13 01:59:51",
@@ -16610,7 +16610,7 @@
     "Text": "But that\u2019s only because Trump is \u201cgood,\u201d or throws \u201cstrikes,\u201d 95% of the time!! https://twitter.com/reginaldedward3/status/1051622653956685825 \u2026",
     "Username": "",
     "tokens": "['But', 'that', '\u2019', 's', 'only', 'because', 'Trump', 'is', '\u201c', 'good', ',', '\u201d', 'or', 'throws', '\u201c', 'strikes', ',', '\u201d', '95', '%', 'of', 'the', 'time', '!', '!', 'https://twitter.com/reginaldedward3/status/1051622653956685825', '\u2026']",
-    "Side": neu
+    "Side": "neu"
 }
 {
     "Date": "2018-10-15 01:59:47",
