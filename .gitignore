@@ -8,6 +8,7 @@ __pycache__/
 # C extensions
 *.so
 
+main/results/
 
 # Distribution / packaging
 .Python
