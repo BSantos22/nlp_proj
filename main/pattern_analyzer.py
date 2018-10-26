@@ -10,7 +10,7 @@ tokenizer = TweetTokenizer()
 porter_stemmer = PorterStemmer()
 stops = set(stopwords.words('english'))
 
-
+# we might want to remove links at some point...
 def is_link(text):
 	link_indicators = ["http", ".com", ".org", ".net", ".co.uk"]
 	for indicator in link_indicators:
@@ -19,6 +19,7 @@ def is_link(text):
 	return False
 
 
+# Basic cleanup, remove digits and odd / empty signs
 def remove_non_words(words):
 	good_words = []
 	for word in words:
@@ -31,11 +32,13 @@ def remove_non_words(words):
 	return good_words
 
 
+# stopwords will have a high frequency but are rarely important, so we might want to remove them
 def remove_stopwords(tweet):
 	lowered_words = [x.lower() for x in tokenizer.tokenize(tweet["Text"])]
 	return [x for x in lowered_words if x not in stops]
 
 
+# Return the number of unique types over the number of tokens
 def lexical_diversity(tweets):
 	#words_naive = []
 	#words_lowered = []
@@ -55,6 +58,9 @@ def lexical_diversity(tweets):
 	return len(set(words_lemmas)) / len(words_lemmas)
 
 
+# See for each word if it is contained in our "swearwords.txt"
+# We got the list from "freewebheaders.com":
+# https://www.freewebheaders.com/download/files/full-list-of-bad-words_text-file_2018_07_30.zip
 def profanity_share(tweets):
 	with open("swearwords.txt") as f:
 		defined_swear_words = f.readlines()
@@ -70,12 +76,14 @@ def profanity_share(tweets):
 	return len(swear_words)/len(words), len(set(swear_words))/len(set(words))
 
 
-# will filter out stopwords, non-words and the topic (as it throws off the calculation, it's kinda all over the place)
+# will filter out stopwords, non-words and the topic, then show the most frequent and unevenly used words
 def biased_words(group1, group2, topic, frequency_weight):
 	group1_wordcount = {}
 	group2_wordcount = {}
 	versus_counts = {}
 	total_num_words = 0
+
+	# count every words occurrence from both groups
 	for tweet in group1:
 		tokens = remove_stopwords(tweet)
 		total_num_words += len(tokens)
@@ -96,11 +104,12 @@ def biased_words(group1, group2, topic, frequency_weight):
 				else:
 					group2_wordcount[token] += 1
 
-	# now we have the wordcounts for each group
+	max_relative_to_total = {'value': 0}  	# this will be the highest number of occurrences of any word
+											# (relative to the total number of words
 
-	max_relative_to_total = {'value': 0}
-
-	def calc_bias(group1_count, group2_count):
+	# Given the number of occurrences of a word (in each group) this calculates the imbalance of usage
+	# (the actual value that is used for the ranking is calculated later, as we need 'max_relative_to_total' for that
+	def calc_imbalance(group1_count, group2_count):
 		absolute_difference = abs(group1_count - group2_count)
 		total_occurrences = group1_count + group2_count
 		relative_diff = absolute_difference / total_occurrences
@@ -109,11 +118,12 @@ def biased_words(group1, group2, topic, frequency_weight):
 			max_relative_to_total['value'] = relative_to_total
 		return relative_diff, relative_to_total
 
+	# calculate imbalance for all words in group one
 	for word in group1_wordcount:
 		occurrences_other_group = 0
 		if word in group2_wordcount:
 			occurrences_other_group = group2_wordcount[word]
-		versus_counts[word] = (group1_wordcount[word], occurrences_other_group, calc_bias(occurrences_other_group, group1_wordcount[word]))
+		versus_counts[word] = (group1_wordcount[word], occurrences_other_group, calc_imbalance(occurrences_other_group, group1_wordcount[word]))
 
 	# until now we only have all words in group1, but there are probably some in group2 which didn't occur in group1.
 	# so do the same again for all words in group2 which are not already in versus_counts
@@ -122,14 +132,25 @@ def biased_words(group1, group2, topic, frequency_weight):
 			occurrences_other_group = 0
 			if word in group1_wordcount:
 				occurrences_other_group = group1_wordcount[word]
-			versus_counts[word] = (occurrences_other_group, group2_wordcount[word], calc_bias(occurrences_other_group, group2_wordcount[word]))
+			versus_counts[word] = (occurrences_other_group, group2_wordcount[word], calc_imbalance(occurrences_other_group, group2_wordcount[word]))
 
+	# the actual imbalance value is calculated here for the ranking
+	# we are aware that this is super-inefficient (should only be calculated once), this is just one of the corners
+	# we're cutting now to save time
 	def compare(item1, item2):
-		return versus_counts[item1][2][0]+versus_counts[item1][2][1] * (frequency_weight / max_relative_to_total['value']) - versus_counts[item2][2][0] - versus_counts[item2][2][1] * (frequency_weight / max_relative_to_total['value'])
+		relative_diff_1 = versus_counts[item1][2][0]
+		frequency_1 = versus_counts[item1][2][1]
+		score1 = relative_diff_1 + frequency_1 * (frequency_weight / max_relative_to_total['value'])
 
-	# problem with this: a difference of 100 is not significant if the word is mentioned thousands of times on both sides...
+		relative_diff_2 = versus_counts[item2][2][0]
+		frequency_2 = versus_counts[item2][2][1]
+		score2 = relative_diff_2 - frequency_2 * (frequency_weight / max_relative_to_total['value'])
+		return score1 - score2
+
+	# perform ranking
 	versus_keys_sorted = sorted(versus_counts, key=functools.cmp_to_key(compare))
 
+	# return list of tuples (words, imbalance-data)
 	vers_count_list = []
 	for key in versus_keys_sorted:
 		vers_count_list.append((key, versus_counts[key]))
