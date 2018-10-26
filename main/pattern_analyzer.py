@@ -104,9 +104,6 @@ def biased_words(group1, group2, topic, frequency_weight):
 				else:
 					group2_wordcount[token] += 1
 
-	max_relative_to_total = {'value': 0}  	# this will be the highest number of occurrences of any word
-											# (relative to the total number of words
-
 	# Given the number of occurrences of a word (in each group) this calculates the imbalance of usage
 	# (the actual value that is used for the ranking is calculated later, as we need 'max_relative_to_total' for that
 	def calc_imbalance(group1_count, group2_count):
@@ -114,8 +111,6 @@ def biased_words(group1, group2, topic, frequency_weight):
 		total_occurrences = group1_count + group2_count
 		relative_diff = absolute_difference / total_occurrences
 		relative_to_total = total_occurrences / total_num_words
-		if max_relative_to_total['value'] < relative_to_total:
-			max_relative_to_total['value'] = relative_to_total
 		return relative_diff, relative_to_total
 
 	# calculate imbalance for all words in group one
@@ -140,11 +135,11 @@ def biased_words(group1, group2, topic, frequency_weight):
 	def compare(item1, item2):
 		relative_diff_1 = versus_counts[item1][2][0]
 		frequency_1 = versus_counts[item1][2][1]
-		score1 = relative_diff_1 + frequency_1 * (frequency_weight / max_relative_to_total['value'])
+		score1 = relative_diff_1 + frequency_1 * frequency_weight
 
 		relative_diff_2 = versus_counts[item2][2][0]
 		frequency_2 = versus_counts[item2][2][1]
-		score2 = relative_diff_2 - frequency_2 * (frequency_weight / max_relative_to_total['value'])
+		score2 = relative_diff_2 + frequency_2 * frequency_weight
 		return score1 - score2
 
 	# perform ranking
