@@ -121,16 +121,19 @@ def acquireTweets(topic, tweets_per_day, start, fame):
 	# Execute until we have reached the current date (user needs to manually quit if they
 	# want to stop earlier, or remove the tweets later on).
 	while start < end:
+		#print("new day: " + str(start))
 		until = start + relativedelta(days=1)
 		print(start.strftime(time_format) + " to " + until.strftime(time_format))
 		tweet_criteria = got.manager.TweetCriteria().setQuerySearch(topic).setSince(start.strftime(time_format)).setUntil(
-			until.strftime(time_format)).setTopTweets(True).setMaxTweets(tweets_per_day)
+			until.strftime(time_format)).setMaxTweets(tweets_per_day)
 		tweets = got.manager.TweetManager.getTweets(tweet_criteria)
 
 		# For every tweet that was downloaded for that day...
-		for x in range(len(tweets)):
+		for got_tweet in tweets:
 			# Convert
-			tweet = tweet_to_json(tweets[x])
+			tweet = tweet_to_json(got_tweet)
+			if tweet["ID"] == "1044738312727015424":
+				print("Found it!")
 			d = json.dumps(tweet, sort_keys=True, indent=4)
 			used = False
 			# If 'fame' requirement is met...
@@ -438,13 +441,16 @@ def analyse(topic, grouping_method):
 
 # Wait for user command
 def getCommand(topic):
-	command = input('1: acquire tweets\n'
+	command = input(
+					'===============================\n'
+					'1: acquire tweets\n'
 					'-------------------------------\n'
 					'2: basic sentiment\n3: basic sentiment w/ preprocessing\n4: dependency sentiment\n5: dependency sentiment w/ preprocessing\n6: basic sentiment & dependency sentiment\n'
 					'-------------------------------\n'
 					'7: analyse\n'
 					'-------------------------------\n'
-					'8: quit\n')
+					'8: quit\n'
+					'===============================\n')
 	if command == "1":
 		num_per_month = input('tweets per day: ')
 		start_date = input("start date: (yyyy-mm-dd): ")
@@ -456,7 +462,7 @@ def getCommand(topic):
 		sentiment_results(topic, results, grouping_methods[0])
 	elif command == "3":
 		tweets = tweets_from_file(topic)
-		tweets = preprocess_trump_tweets(topic, tweets)
+		#tweets = preprocess_trump_tweets(topic, tweets)
 		results, tweets = sentiment(topic, tweets)
 		sentiment_results(topic, results, grouping_methods[1])
 	elif command == "4":
@@ -465,13 +471,13 @@ def getCommand(topic):
 		sentiment_results(topic, results, grouping_methods[2])
 	elif command == "5":
 		tweets = tweets_from_file(topic)
-		tweets = preprocess_trump_tweets(topic, tweets)
+		#tweets = preprocess_trump_tweets(topic, tweets)
 		results = dependency_parser(topic, tweets, "dep_pp", False)
 		sentiment_results(topic, results, grouping_methods[3])
 	elif command == "6":
 		tweets = tweets_from_file(topic)
 		results, tweets = sentiment(topic, tweets)
-		tweets = preprocess_trump_tweets(topic, tweets)
+		#tweets = preprocess_trump_tweets(topic, tweets)
 		results = dependency_parser(topic, tweets, "sent_dep", True)
 		sentiment_results(topic, results, grouping_methods[4])
 		return
