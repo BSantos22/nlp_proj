@@ -6,6 +6,7 @@ from operator import pos
 import GetOldTweets3 as got
 import os
 import nltk
+nltk.download('stopwords')
 from nltk.corpus import stopwords
 import operator
 from nltk.tokenize import TweetTokenizer
