@@ -8,10 +8,8 @@ __pycache__/
 # C extensions
 *.so
 
-main/results/
 
 # Distribution / packaging
-main/results/
 .Python
 .idea/
 env/
