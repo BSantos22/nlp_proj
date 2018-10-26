@@ -28,6 +28,8 @@ sent_dir = tweets_dir + "/sentiments"
 anal_dir = tweets_dir + "/analysis"
 time_format = "%Y-%m-%d"
 
+grouping_methods = ["sent", "sent_pp", "dep", "dep_pp", "sent_dep"]
+
 edge = 0.2
 
 # Read a list of tweets of a certain topic
@@ -209,7 +211,7 @@ def sentiment_results(topic, results, out):
 	plt.savefig(sent_dir + "/" + topic + "_plot" + "_" + out + ".png")
 	plt.clf()
 	std = np.std(results['sentiments'])
-	controversial = std > edge and abs(binCount[0] - binCount[2]) < len(results['sentiments'])/5
+	controversial = std > edge and binCount[0] + binCount[2] > binCount[1]
 	print("Controversial " + str(controversial))
 	results['edge'] = edge
 	results['std'] = std
@@ -356,7 +358,7 @@ def preprocess_trump_tweets(topic, tweets):
 
 
 def load_vader_lexicon():
-	lines = open('./main/vader_lexicon/vader_lexicon.txt').readlines()
+	lines = open('vader_lexicon/vader_lexicon.txt').readlines()
 	lexicon = {}
 	for line in lines:
 		lexicon[line.split('\t')[0]] = line.split('\t')[1]
@@ -436,7 +438,13 @@ def analyse(topic, grouping_method):
 
 # Wait for user command
 def getCommand(topic):
-	command = input('1: acquire tweets\n2: basic sentiment\n3: basic sentiment w/ preprocessing\n4: dependency sentiment\n5: dependency sentiment w/ preprocessing\n6: basic sentiment & dependency sentiment\n7: analyse\n8: quit\n')
+	command = input('1: acquire tweets\n'
+					'-------------------------------\n'
+					'2: basic sentiment\n3: basic sentiment w/ preprocessing\n4: dependency sentiment\n5: dependency sentiment w/ preprocessing\n6: basic sentiment & dependency sentiment\n'
+					'-------------------------------\n'
+					'7: analyse\n'
+					'-------------------------------\n'
+					'8: quit\n')
 	if command == "1":
 		num_per_month = input('tweets per day: ')
 		start_date = input("start date: (yyyy-mm-dd): ")
@@ -445,30 +453,31 @@ def getCommand(topic):
 	elif command == "2":
 		tweets = tweets_from_file(topic)
 		results, tweets = sentiment(topic, tweets)
-		sentiment_results(topic, results, "sent")
+		sentiment_results(topic, results, grouping_methods[0])
 	elif command == "3":
 		tweets = tweets_from_file(topic)
 		tweets = preprocess_trump_tweets(topic, tweets)
 		results, tweets = sentiment(topic, tweets)
-		sentiment_results(topic, results, "sent_pp")	
+		sentiment_results(topic, results, grouping_methods[1])
 	elif command == "4":
 		tweets = tweets_from_file(topic)
 		results = dependency_parser(topic, tweets, "dep", False)
-		sentiment_results(topic, results, "dep")
+		sentiment_results(topic, results, grouping_methods[2])
 	elif command == "5":
 		tweets = tweets_from_file(topic)
 		tweets = preprocess_trump_tweets(topic, tweets)
 		results = dependency_parser(topic, tweets, "dep_pp", False)
-		sentiment_results(topic, results, "dep_pp")
+		sentiment_results(topic, results, grouping_methods[3])
 	elif command == "6":
 		tweets = tweets_from_file(topic)
 		results, tweets = sentiment(topic, tweets)
 		tweets = preprocess_trump_tweets(topic, tweets)
 		results = dependency_parser(topic, tweets, "sent_dep", True)
-		sentiment_results(topic, results, "sent_dep")
+		sentiment_results(topic, results, grouping_methods[4])
 		return
 	elif command == "7":
-		grouping_method = input('grouping method: ')
+		print("Grouping methods: " + str(grouping_methods))
+		grouping_method = input('Select grouping method: ')
 		analyse(topic, grouping_method)
 	elif command == "8":
 		raise SystemExit
