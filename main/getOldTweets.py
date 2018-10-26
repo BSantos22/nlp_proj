@@ -20,6 +20,7 @@ import pattern_analyzer
 
 nltk.download('stopwords')
 
+# Directories for data storage
 tweets_dir = "results"
 raw_dir = tweets_dir + "/filteredOut"
 filtered_dir = tweets_dir + "/tweets"
@@ -27,9 +28,11 @@ sent_dir = tweets_dir + "/sentiments"
 anal_dir = tweets_dir + "/analysis"
 time_format = "%Y-%m-%d"
 
+grouping_methods = ["sent", "sent_pp", "dep", "dep_pp", "sent_dep"]
+
 edge = 0.2
 
-
+# Read a list of tweets of a certain topic
 def tweets_from_file(topic):
 	tweets = []
 	tweets_file_name = filtered_dir + '/' + topic + '.txt'
@@ -49,6 +52,7 @@ def tweets_from_file(topic):
 	return tweets
 
 
+# Read a list of tweets from a certain file
 def tweets_from_path(path):
 	tweets = []
 	print("Looking for data in " + path)
@@ -67,19 +71,21 @@ def tweets_from_path(path):
 	return tweets
 
 
+# Convert a tweet to json
 def tweet_to_json(tweet):
-	return {'Text': tweet['Text'],
-			'Retweets': tweet['Retweets'],
-			'Favorites': tweet['Favorites'],
-			'Hashtags': tweet['Hashtags'],
-			'ID': tweet['ID'],
-			'Username': tweet['Username'],
-			'Permalink': tweet['Permalink'],
-			'Mentions': tweet['Mentions'],
-			'Date': str(tweet['Date']),
+	return {'Text': tweet.text,
+			'Retweets': tweet.retweets,
+			'Favorites': tweet.favorites,
+			'Hashtags': tweet.hashtags,
+			'ID': tweet.id,
+			'Username': tweet.username,
+			'Permalink': tweet.permalink,
+			'Mentions': tweet.mentions,
+			'Date': str(tweet.date),
 			'Side': ''}
 
 
+# Is a tweet written in the english language?
 def tweet_is_english(tweet):
 	text = tweet['Text']
 	languages_ratios = {}
@@ -90,15 +96,19 @@ def tweet_is_english(tweet):
 		stopwords_set = set(stopwords.words(language))
 		common_elements = words_set.intersection(stopwords_set)
 		languages_ratios[language] = len(common_elements)
+	# language with most intersections
 	predicted_language = max(languages_ratios.items(), key=operator.itemgetter(1))[0]
 	if predicted_language == "english":
 		return words
 	return None
 
 
-def acquireTweets(topic, tweets_per_month, start, fame):	# could probs be improved by threading
-	file_name = topic + "_" + str(tweets_per_month) + "_" + str(fame)
+# Download tweets, given a topic, a maximum of tweets per day, a start date
+# and a minimum required 'fame' (retweets and liles)
+def acquireTweets(topic, tweets_per_day, start, fame):
+	file_name = topic + "_" + str(tweets_per_day) + "_" + str(fame)
 
+	# Retweets have a higher weight, as they display the tweet in question to all of the users followers
 	def tweet_is_fame_dayum(tweet):
 		return 2 * int(tweet["Retweets"]) + int(tweet['Favorites']) >= fame
 
@@ -107,24 +117,37 @@ def acquireTweets(topic, tweets_per_month, start, fame):	# could probs be improv
 	num_filtered = 0
 	tweets_file_name = raw_dir + '/' + file_name + '.txt'
 	tweets_file_name_filtered = filtered_dir + '/' + topic + '.txt'
+
+	# Execute until we have reached the current date (user needs to manually quit if they
+	# want to stop earlier, or remove the tweets later on).
 	while start < end:
+		#print("new day: " + str(start))
 		until = start + relativedelta(days=1)
 		print(start.strftime(time_format) + " to " + until.strftime(time_format))
 		tweet_criteria = got.manager.TweetCriteria().setQuerySearch(topic).setSince(start.strftime(time_format)).setUntil(
-			until.strftime(time_format)).setTopTweets(True).setMaxTweets(tweets_per_month)
+			until.strftime(time_format)).setMaxTweets(tweets_per_day)
 		tweets = got.manager.TweetManager.getTweets(tweet_criteria)
-		for x in range(len(tweets)):
-			tweet = tweet_to_json(tweets[x])
+
+		# For every tweet that was downloaded for that day...
+		for got_tweet in tweets:
+			# Convert
+			tweet = tweet_to_json(got_tweet)
+			if tweet["ID"] == "1044738312727015424":
+				print("Found it!")
 			d = json.dumps(tweet, sort_keys=True, indent=4)
 			used = False
+			# If 'fame' requirement is met...
 			if tweet_is_fame_dayum(tweet):
 				words_set = tweet_is_english(tweet)
+				# If tweet is english
 				if words_set is not None:
 					used = True
 					num_filtered += 1
 					tweet["tokens"] = str(words_set)
+					# Store among tweets of interest
 					print(d, file=open(tweets_file_name_filtered, 'a+'))
 			if not used:
+					# Store among unwanted tweets (to check later that they were all correctly filtered out).
 				print(d, file=open(tweets_file_name, 'a+'))
 		num_tweets += len(tweets)
 		print(str(num_tweets) + " tweets, " + str(num_filtered) + " of interest")
@@ -196,7 +219,7 @@ def sentiment_results(topic, results, out):
 	plt.savefig(sent_dir + "/" + topic + "_plot" + "_" + out + ".png")
 	plt.clf()
 	std = np.std(results['sentiments'])
-	controversial = std > edge and abs(binCount[0] - binCount[2]) < len(results['sentiments'])/5
+	controversial = std > edge and binCount[0] + binCount[2] > binCount[1]
 	print("Controversial " + str(controversial))
 	results['edge'] = edge
 	results['std'] = std
@@ -343,13 +366,14 @@ def preprocess_trump_tweets(topic, tweets):
 
 
 def load_vader_lexicon():
-	lines = open('./main/vader_lexicon/vader_lexicon.txt').readlines()
+	lines = open('vader_lexicon/vader_lexicon.txt').readlines()
 	lexicon = {}
 	for line in lines:
 		lexicon[line.split('\t')[0]] = line.split('\t')[1]
 	return lexicon
 
 
+# uses methods from pattern_analyzer.py to gather information on the differences between the positive and negative group
 def analyse(topic, grouping_method):
 	topic_dir = anal_dir + "/" + topic
 	if os.path.exists(topic_dir):
@@ -376,24 +400,29 @@ def analyse(topic, grouping_method):
 			return
 	print("Aight, let's see...")
 
+	# extract groups
 	negative_tweets = tweets_from_path(sentiment_files[0])
 	positive_tweets = tweets_from_path(sentiment_files[2])
 
+	# lexical diversity for each group
 	analysis_neg["lexicalDiversity"] = pattern_analyzer.lexical_diversity(negative_tweets)
 	analysis_pos["lexicalDiversity"] = pattern_analyzer.lexical_diversity(positive_tweets)
 
+	# how much progranity does each group use?
 	analysis_neg["profanityShare"] = pattern_analyzer.profanity_share(negative_tweets)
 	analysis_pos["profanityShare"] = pattern_analyzer.profanity_share(positive_tweets)
 
 	biases_file = open(topic_dir + "/" + "word_biases.txt", 'w+')
-
+	# weigh of frequency (vs polarisation)
 	frequency_weight = input("Weight of frequency (0...1):")
 
+	# most frequent and polarised words
 	word_biases = pattern_analyzer.biased_words(negative_tweets, positive_tweets, topic, float(frequency_weight))
 
 	analysis_neg["attitudeTopWords"] = pattern_analyzer.attitude_towards_top_words(negative_tweets, word_biases, sentiment)
 	analysis_pos["attitudeTopWords"] = pattern_analyzer.attitude_towards_top_words(positive_tweets, word_biases, sentiment)
 
+	# display word biases as table (and also save to file)
 	index = len(word_biases)
 	row = "#rank: " + "word" + (" " * (30 - len("word"))) + "negative" + (" " * (30 - len("negative"))) + "positive" + (" " * (30 - len("positive"))) + "imbalance, relative frequency" + (" " * (30 - len("imbalance, relative frequency")))
 	print(row)
@@ -415,9 +444,18 @@ def analyse(topic, grouping_method):
 	d = json.dumps(analysis_pos, sort_keys=True, indent=4)
 	print(d, file=open(topic_dir + "/" + "pos.txt", 'w+'))
 
-
+# Wait for user command
 def getCommand(topic):
-	command = input('1: acquire, 2: sentiment, 3: sentiment w/ preprocessing, 4: dependency, 5: dependency w/ preprocessing, 6: sentiment & dependency, 7: analyse\n')
+	command = input(
+					'===============================\n'
+					'1: acquire tweets\n'
+					'-------------------------------\n'
+					'2: basic sentiment\n3: basic sentiment w/ preprocessing\n4: dependency sentiment\n5: dependency sentiment w/ preprocessing\n6: basic sentiment & dependency sentiment\n'
+					'-------------------------------\n'
+					'7: analyse\n'
+					'-------------------------------\n'
+					'8: quit\n'
+					'===============================\n')
 	if command == "1":
 		num_per_month = input('tweets per day: ')
 		start_date = input("start date: (yyyy-mm-dd): ")
@@ -426,37 +464,41 @@ def getCommand(topic):
 	elif command == "2":
 		tweets = tweets_from_file(topic)
 		results, tweets = sentiment(topic, tweets, True)
-		sentiment_results(topic, results, "sent")
+		sentiment_results(topic, results, grouping_methods[0])
 	elif command == "3":
 		tweets = tweets_from_file(topic)
-		tweets = preprocess_trump_tweets(topic, tweets)
+		#tweets = preprocess_trump_tweets(topic, tweets)
 		results, tweets = sentiment(topic, tweets, True)
-		sentiment_results(topic, results, "sent_pp")	
+		sentiment_results(topic, results, grouping_methods[1])	
 	elif command == "4":
 		tweets = tweets_from_file(topic)
 		results = dependency_parser(topic, tweets, "dep", False)
-		sentiment_results(topic, results, "dep")
+		sentiment_results(topic, results, grouping_methods[2])
 	elif command == "5":
 		tweets = tweets_from_file(topic)
-		tweets = preprocess_trump_tweets(topic, tweets)
+		#tweets = preprocess_trump_tweets(topic, tweets)
 		results = dependency_parser(topic, tweets, "dep_pp", False)
-		sentiment_results(topic, results, "dep_pp")
+		sentiment_results(topic, results, grouping_methods[3])
 	elif command == "6":
 		tweets = tweets_from_file(topic)
 		results, tweets = sentiment(topic, tweets, True)
-		tweets = preprocess_trump_tweets(topic, tweets)
+		#tweets = preprocess_trump_tweets(topic, tweets)
 		results = dependency_parser(topic, tweets, "sent_dep", True)
-		sentiment_results(topic, results, "sent_dep")
+		sentiment_results(topic, results, grouping_methods[4])
 		return
 	elif command == "7":
-		grouping_method = input('grouping method: ')
+		print("Grouping methods: " + str(grouping_methods))
+		grouping_method = input('Select grouping method: ')
 		analyse(topic, grouping_method)
+	elif command == "8":
+		raise SystemExit
 	else:
 		print("what?")
 		getCommand(topic)
 
 
 def start():
+	# check that directories exist
 	if not os.path.exists(tweets_dir):
 		os.makedirs(tweets_dir)
 	if not os.path.exists(raw_dir):
@@ -467,7 +509,7 @@ def start():
 		os.makedirs(sent_dir)
 	if not os.path.exists(anal_dir):
 		os.makedirs(anal_dir)
-	while(True):  # yeah, i know
+	while(True):  # ask for commands until user quits
 		topic = input('topic: ')
 		getCommand(topic)
-		print("\n\nCool, done, next:")
+		print("\n\nCool, done, next...")

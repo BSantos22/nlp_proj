@@ -7,9 +7,11 @@ __pycache__/
 
 # C extensions
 *.so
-results/
+
+main/results/
 
 # Distribution / packaging
+main/results/
 .Python
 .idea/
 env/
