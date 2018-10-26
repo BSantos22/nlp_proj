@@ -3,10 +3,7 @@ import json
 import shutil
 from operator import pos
 
-if sys.version_info[0] < 3:
-	import got
-else:
-	import got3 as got
+import GetOldTweets3 as got
 import os
 import nltk
 from nltk.corpus import stopwords
@@ -243,6 +240,8 @@ def dependency_parser(topic, tweets, out, uses_sentiment):
 		"controversial": "",
 		"sentiments": []
 	}
+	progress_step = 100
+	progress = 0
 	for tweet in tweets:
 		doc = nlp(tweet['Text'])
 		score = []
@@ -321,6 +320,14 @@ def dependency_parser(topic, tweets, out, uses_sentiment):
 				results['FNEG(NEU)'] += 1
 		d = json.dumps(tweet, sort_keys=True, indent=4)
 		print(d, file=open(file_name, 'a+'))
+		progress_step -= 1
+		if progress_step == 0:
+			progress += 100
+			progress_step = 100
+			sys.stdout.write('\r')
+			sys.stdout.flush()
+			sys.stdout.write(str(int(progress / len(tweets) * 100)) + "%")
+			sys.stdout.flush()
 	return results
 
 
