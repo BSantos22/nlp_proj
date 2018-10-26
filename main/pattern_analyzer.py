@@ -136,5 +136,40 @@ def biased_words(group1, group2, topic, frequency_weight):
 	return vers_count_list
 
 
-def attitude_towards_top_words(tweets, word_biases):
-	return ""
+def attitude_towards_top_words(tweets, word_biases, sentiment_function):
+	scores = [tweet['score'] for tweet in tweets]
+	sent_avg = sum(scores)/float(len(scores))
+	import itertools
+	n = 0
+	p = 0
+	n_sent = {}
+	p_sent = {}
+	limit = 20
+	for word in word_biases[::-1]:
+		if len(word[0]) != 1:
+			if word[1][0] > word[1][1] and n < limit:
+				t = [tweet for tweet in tweets if word[0] in tweet['Text']]
+				results, t = sentiment_function(word[0], t, False)
+				n_sent[word[0]] = results['sentiments']
+				n += 1
+			elif word[1][0] < word[1][1] and p < limit:
+				t = [tweet for tweet in tweets if word[0] in tweet['Text']]
+				results, t = sentiment_function(word[0], t, False)
+				p_sent[word[0]] = results['sentiments']
+				p += 1
+	n_values = list(itertools.chain.from_iterable(n_sent.values()))
+	n_avg = sum(n_values)/float(len(n_values))
+	p_values = list(itertools.chain.from_iterable(p_sent.values()))
+	p_avg = sum(p_values)/float(len(p_values))
+	return {
+		'negative': {
+			'avg': n_avg,
+			'diff': n_avg-sent_avg,
+			'words': {k: sum(v)/float(len(v)) if len(v) != 0 else 0 for k, v in n_sent.items()}
+		},
+		'positive': {
+			'avg': p_avg,
+			'diff': p_avg-sent_avg,
+			'words': {k: sum(v)/float(len(v)) if len(v) != 0 else 0 for k, v in p_sent.items()}
+		}
+	}

@@ -135,7 +135,7 @@ def acquireTweets(topic, tweets_per_month, start, fame):	# could probs be improv
 # opinionated, for instance: "That Kavanaugh even showed up to that bizarre White House pep rally shows how temperamentally unqualified he is to sit on SCOTUS."
 # had a score of only -0.3182.
 # For now I put the line at -0.2 and 0.2
-def sentiment(topic, tweets):
+def sentiment(topic, tweets, save_to_file):
 	results = {
 		'TPOS': 0,
 		'FPOS(NEU)': 0,
@@ -182,8 +182,9 @@ def sentiment(topic, tweets):
 				results['FNEU(NEG)'] += 1
 			else:
 				results['TNEU'] += 1
-		d = json.dumps(tweet, sort_keys=True, indent=4)
-		print(d, file=open(file_name, 'a+'))
+		if save_to_file:
+			d = json.dumps(tweet, sort_keys=True, indent=4)
+			print(d, file=open(file_name, 'a+'))
 	return results, tweets
 
 
@@ -390,8 +391,8 @@ def analyse(topic, grouping_method):
 
 	word_biases = pattern_analyzer.biased_words(negative_tweets, positive_tweets, topic, float(frequency_weight))
 
-	analysis_neg["attitudeTopWords"] = pattern_analyzer.attitude_towards_top_words(negative_tweets, word_biases)
-	analysis_pos["attitudeTopWords"] = pattern_analyzer.attitude_towards_top_words(positive_tweets, word_biases)
+	analysis_neg["attitudeTopWords"] = pattern_analyzer.attitude_towards_top_words(negative_tweets, word_biases, sentiment)
+	analysis_pos["attitudeTopWords"] = pattern_analyzer.attitude_towards_top_words(positive_tweets, word_biases, sentiment)
 
 	index = len(word_biases)
 	row = "#rank: " + "word" + (" " * (30 - len("word"))) + "negative" + (" " * (30 - len("negative"))) + "positive" + (" " * (30 - len("positive"))) + "imbalance, relative frequency" + (" " * (30 - len("imbalance, relative frequency")))
@@ -424,12 +425,12 @@ def getCommand(topic):
 		acquireTweets(topic, int(num_per_month), parser.parse(start_date), int(min_fame))
 	elif command == "2":
 		tweets = tweets_from_file(topic)
-		results, tweets = sentiment(topic, tweets)
+		results, tweets = sentiment(topic, tweets, True)
 		sentiment_results(topic, results, "sent")
 	elif command == "3":
 		tweets = tweets_from_file(topic)
 		tweets = preprocess_trump_tweets(topic, tweets)
-		results, tweets = sentiment(topic, tweets)
+		results, tweets = sentiment(topic, tweets, True)
 		sentiment_results(topic, results, "sent_pp")	
 	elif command == "4":
 		tweets = tweets_from_file(topic)
@@ -442,7 +443,7 @@ def getCommand(topic):
 		sentiment_results(topic, results, "dep_pp")
 	elif command == "6":
 		tweets = tweets_from_file(topic)
-		results, tweets = sentiment(topic, tweets)
+		results, tweets = sentiment(topic, tweets, True)
 		tweets = preprocess_trump_tweets(topic, tweets)
 		results = dependency_parser(topic, tweets, "sent_dep", True)
 		sentiment_results(topic, results, "sent_dep")
